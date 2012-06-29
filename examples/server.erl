@@ -19,6 +19,7 @@ main(_) ->
               case Counter of
                 10 -> 
                   self() ! {send, list_to_binary("Good Bye !!!")},
+                  io:format("<<<<< ~p~n", ["Good Bye !!!"]),
                   self() ! close,
                   0;
                 _ -> Counter + 1
