@@ -22,18 +22,16 @@ stop(Name) ->
 
 handshake(Socket, Fun) ->
   inet:setopts(Socket, [{packet, http}]),
+  %inet:setopts(Socket, [{packet, raw}]),
   case gen_tcp:recv(Socket, 0) of
-    {ok, {http_request, _Method, _Path, _Version}} ->
-      log(http_request),
-      check_header(Socket, [], Fun);
-    {error, {http_error, "\r\n"}} ->
-      handshake(Socket, Fun);
-    {error, {http_error, "\n"}} ->
-      handshake(Socket, Fun)
+    {ok, {http_request, _Method, {abs_path, Path}, _Version}} ->
+      check_header(Socket, [{"_PATH_", Path}], Fun);
+    _ ->
+      log(invalid_handshake_request)
   end.
 
 check_header(Socket, Headers, Fun) ->
-  case gen_tcp:recv(Socket, 0) of
+  case gen_tcp:recv(Socket, 0, 50) of
     {ok, {http_header, _, Name, _, Value}} when is_atom(Name) ->
       log([fixed_header, Name, Value]),
       check_header(Socket, [{atom_to_list(Name), Value} | Headers], Fun);
@@ -41,6 +39,12 @@ check_header(Socket, Headers, Fun) ->
       log([check_header, Name, Value]),
       check_header(Socket, [{Name, Value} | Headers], Fun);
     {ok, http_eoh} ->
+      inet:setopts(Socket, [{packet, raw}]),
+      check_header(Socket, Headers, Fun);
+    {ok, Eoh} when is_binary(Eoh) ->
+      log([check_header_eoh, Eoh]),
+      check_header(Socket, [{"_EOH_", binary_to_list(Eoh)} | Headers], Fun);
+    {error, timeout} ->
       case webtekcos_tools:check_version(Headers) of
         undef ->
           log(invalid_websocket_protocol),
@@ -49,12 +53,13 @@ check_header(Socket, Headers, Fun) ->
         Mod -> %% webtekcos_<version> module
           log([websocket_protocol, Mod]),
           Mod:handshake(Socket, Headers),
+          log([handshake_end, Mod]),
           %% Set packet back to raw for the rest of the connection
           inet:setopts(Socket, [{packet, raw}, {active, true}]),
           loop(Mod, Socket, Fun, undef)
       end;
-    _ ->
-      log(check_header_error),
+    {error, Error} ->
+      log([check_header_error, Error]),
       gen_tcp:close(Socket),
       exit(normal)
   end.
@@ -81,7 +86,12 @@ loop(Mod, Socket, Fun, LoopData) ->
     {send, Bin} when is_binary(Bin) ->
       gen_tcp:send(Socket, Mod:encode(Bin)), 
       LoopData;
+    {tcp_closed, _} ->
+      gen_tcp:close(Socket),
+      Fun(disconnected, LoopData),
+      exit(normal);
     Msg ->
+      log([msg, Msg]),
       Fun({msg, Msg}, LoopData)
   end,
   loop(Mod, Socket, Fun, NewLoopData).
