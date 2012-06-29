@@ -1,0 +1,13 @@
+<!DOCTYPE HTML>
+<html>
+  <body>
+    <script type="text/javascript" charset="utf-8">
+      ws = new WebSocket("ws://127.0.0.1:8000/", "example");
+      ws.onmessage = function(e) { console.log("<<<<<< " + e.data); };
+      window.setInterval(function() {
+        ws.send("Hello webtekcos!!!");
+      }, 500);
+    </script>
+    <h1>Check console log from Developer Tools !!!</h1>
+  </body>
+</html>

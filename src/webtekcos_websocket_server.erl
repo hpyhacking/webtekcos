@@ -64,6 +64,7 @@ generate_websocket_accept(Key) ->
     Key ++ "258EAFA5-E914-47DA-95CA-C5AB0DC85B11")).
 
 check_header(Socket, Path, Headers, Fun) ->
+  log(check_header),
   case gen_tcp:recv(Socket, 0) of
     {ok, http_eoh} ->
       verify_handshake(Socket,Path,Headers),
@@ -71,8 +72,10 @@ check_header(Socket, Path, Headers, Fun) ->
       inet:setopts(Socket, [{packet, raw}, {active, true}]),
       loop(Socket, Fun, ?UNDEF);
     {ok, {http_header, _, Name, _, Value}} ->
+      log([check_header, Name, Value]),
       check_header(Socket, Path, [{Name, Value} | Headers], Fun);
     _Other ->
+      log([check_header, error, _Other]),
       gen_tcp:close(Socket),
       exit(normal)
   end.
@@ -90,20 +93,25 @@ get_header([], _FindKey) ->
   ok.
 
 loop(Socket, Fun, ?UNDEF) ->
+  log("begin loop"),
   LoopData = Fun(connected, ?UNDEF),
   loop(Socket, Fun, LoopData);
 loop(Socket, Fun, LoopData) ->
   NewLoopData = receive
     close ->
+      log(connection_close),
       gen_tcp:close(Socket),
+      Fun(disconnected, LoopData),
       exit(normal);
     {tcp, Socket, Bin} ->
       case decode(Bin) of
         tcp_closed ->
+          log(tcp_connection_close),
           Fun(disconnected, LoopData),
           gen_tcp:close(Socket),
           exit(normal);
         Data ->
+          log([receive_data, Data]),
           Fun({recv, Data}, LoopData)
       end;
     {send, Bin} when is_binary(Bin) ->
@@ -119,6 +127,7 @@ loop(Socket, Fun, LoopData) ->
 %%%
 
 loop(Socket, Fun) ->
+  log("begin handshake"),
   handshake(Socket, Fun).
 
 encode(Data) when is_binary(Data) ->
@@ -148,3 +157,10 @@ unmask_data([H|T], MaskKey, Index, Result) ->
 
 easy_loop(Msg, Data) ->
   error_logger:info_report([{msg, Msg}, {data, Data}]).
+
+log(Msg) ->
+  case init:get_argument(debug) of
+    {ok, _} ->
+      io:format("===> ~p~n", [Msg]);
+    _ -> ok
+  end.
