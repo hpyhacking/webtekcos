@@ -27,10 +27,14 @@ main(_) ->
           end
       end
   end,
-  webtekcos_websocket_server:start_link("127.0.0.1", 8000, Loop),
+  webtekcos:start_link("127.0.0.1", 8000, Loop),
+
   io:format("Open client.html test websocket server.~n"),
   io:format("It's listen on localhost:8000.~n"),
   io:format("Press Ctrl+C to shutdown server!!!~n"),
+
+  os:cmd("open ./examples"),
+
   receive
     _ -> ok
   end.

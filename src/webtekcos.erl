@@ -1,4 +1,4 @@
--module(webtekcos_websocket_server).
+-module(webtekcos).
 -export([start_link/0, start_link/3, start_link/4, stop/1, loop/2]).
 
 start_link() ->
