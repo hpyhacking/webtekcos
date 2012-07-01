@@ -33,6 +33,7 @@ handshake(Socket, Headers) ->
 
 parse_key(Key) ->
   parse_key(Key, [], 0).
+
 parse_key([], Numbers, 0) ->
   erlang:list_to_integer(lists:reverse(Numbers));
 parse_key([], Numbers, Spaces) ->
