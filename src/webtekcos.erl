@@ -1,16 +1,15 @@
 -module(webtekcos).
--export([start_link/0, start_link/3, start_link/4, stop/1, loop/2]).
+-export([start_link/0, start_link/2, start_link/3, stop/1, loop/1]).
 -export([send_data/1, close/0]).
 
 start_link() ->
-  start_link(?MODULE, "127.0.0.1", 3008, webtekcos_sample).
+  start_link(?MODULE, "127.0.0.1", 3008).
 
-start_link(Host, Port, Mod) when is_list(Host), is_integer(Port) ->
-  start_link(?MODULE, Host, Port, Mod).
+start_link(Host, Port) when is_list(Host), is_integer(Port) ->
+  start_link(?MODULE, Host, Port).
   
-start_link(Name, Host, Port, Mod) when is_list(Host), is_integer(Port) ->
-  Fun = fun (Socket) -> ?MODULE:loop(Socket, Mod) end,
-  Options = [{ip, Host}, {loop, Fun}, {port, Port}, {name, Name}],
+start_link(Name, Host, Port) when is_list(Host), is_integer(Port) ->
+  Options = [{ip, Host}, {loop, fun ?MODULE:loop/1}, {port, Port}, {name, Name}],
   io:format("start websocket server ...~n"),
   mochiweb_socket_server:start_link(Options).
 
@@ -21,47 +20,58 @@ stop(Name) ->
 %%% websocket protocol
 %%%
 
-handshake(Socket, Mod) ->
-  inet:setopts(Socket, [{packet, http}]),
-  case gen_tcp:recv(Socket, 0) of
-    {ok, {http_request, _Method, {abs_path, Path}, _Version}} ->
-      check_header(Socket, [{"_PATH_", Path}], Mod);
-    _ ->
-      log(invalid_handshake_request)
-  end.
-
-check_header(Socket, Headers, Mod) ->
+check_header(Socket, Headers) ->
   case gen_tcp:recv(Socket, 0, 50) of
     {ok, {http_header, _, Name, _, Value}} when is_atom(Name) ->
       log([fixed_header, Name, Value]),
-      check_header(Socket, [{atom_to_list(Name), Value} | Headers], Mod);
+      check_header(Socket, [{atom_to_list(Name), Value} | Headers]);
     {ok, {http_header, _, Name, _, Value}} ->
       log([check_header, Name, Value]),
-      check_header(Socket, [{Name, Value} | Headers], Mod);
+      check_header(Socket, [{Name, Value} | Headers]);
     {ok, http_eoh} -> %% Check hixie76 last 8 byte checksum
       inet:setopts(Socket, [{packet, raw}]),
-      check_header(Socket, Headers, Mod);
+      check_header(Socket, Headers);
     {ok, Eoh} when is_binary(Eoh) ->
       log([check_header_eoh, Eoh]),
-      check_header(Socket, [{"_EOH_", binary_to_list(Eoh)} | Headers], Mod);
+      check_header(Socket, [{"_EOH_", binary_to_list(Eoh)} | Headers]);
     {error, timeout} ->
-      case webtekcos_tools:check_version(Headers) of
-        undef ->
-          log(invalid_websocket_protocol),
-          gen_tcp:close(Socket),
-          exit(normal);
-        VersionMod -> %% webtekcos_<version> module
-          log([websocket_protocol, VersionMod]),
-          VersionMod:handshake(Socket, Headers),
-          log([handshake_end, VersionMod]),
-          %% Set packet back to raw for the rest of the connection
-          inet:setopts(Socket, [{packet, raw}, {active, true}]),
-          loop(VersionMod, Socket, Mod, undef)
-      end;
+      VersionMod = webtekcos_tools:check_version(Headers),
+      handshake(VersionMod, Socket, Headers);
     {error, Error} ->
       log([check_header_error, Error]),
       gen_tcp:close(Socket),
       exit(normal)
+  end.
+
+handshake(undef, Socket, _Headers) ->
+  log(invalid_websocket_protocol),
+  gen_tcp:close(Socket),
+  exit(normal);
+handshake(VersionMod, Socket, Headers) ->
+  log([websocket_protocol, VersionMod]),
+  VersionMod:handshake(Socket, Headers),
+  log([handshake_end, VersionMod]),
+
+  Path = webtekcos_tools:get_header(Headers, "_PATH_"),
+  Mod = list_to_atom(string:join(string:tokens(Path, "/"), "_")),
+  log([handle_mod, Mod]),
+
+  check_mod(Mod, VersionMod, Socket, undef).
+
+check_mod(Mod, VersionMod, Socket, LoopData) ->
+  case code:is_loaded(Mod) of
+    {file, _} ->
+      inet:setopts(Socket, [{packet, raw}, {active, true}]),
+      loop(VersionMod, Socket, Mod, LoopData);
+    false ->
+      case code:load_file(Mod) of
+        {module, Mod} ->
+          check_mod(Mod, VersionMod, Socket, LoopData);
+        _ ->
+          log([invalid_handle_mod, Mod]),
+          gen_tcp:close(Socket),
+          exit(normal)
+      end
   end.
 
 loop(VersionMod, Socket, Mod, undef) ->
@@ -105,8 +115,14 @@ send_data(Data) when is_binary(Data) ->
 %%% private
 %%%
 
-loop(Socket, Mod) ->
-  handshake(Socket, Mod).
+loop(Socket) ->
+  inet:setopts(Socket, [{packet, http}]),
+  case gen_tcp:recv(Socket, 0) of
+    {ok, {http_request, _Method, {abs_path, Path}, _Version}} ->
+      check_header(Socket, [{"_PATH_", Path}]);
+    _ ->
+      log(invalid_handshake_request)
+  end.
 
 log(Msg) ->
   io:format("===> ~p~n", [Msg]).

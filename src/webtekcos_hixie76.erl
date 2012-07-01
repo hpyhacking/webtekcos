@@ -27,8 +27,6 @@ handshake(Socket, Headers) ->
   "Sec-WebSocket-Origin: " ++ Origin ++ "\r\n" ++
   "Sec-WebSocket-Protocol: " ++ Protocol ++ "\r\n\r\n" ++ binary_to_list(CheckSum),
 
-  io:format("Response ~p~n", [Response]),
-
   gen_tcp:send(Socket, Response).
 
 parse_key(Key) ->
