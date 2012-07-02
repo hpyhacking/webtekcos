@@ -108,8 +108,9 @@ loop(VersionMod, Socket, Mod, LoopData) ->
 close() ->
   self() ! close.
 
-send_data(Data) when is_binary(Data) ->
-  self() ! {send, Data}.
+send_data(Data) -> send_data(self(), Data);
+send_data(PID, Data) when is_pid(PID), is_binary(Data) ->
+  PID ! {send, Data}.
 
 %%%
 %%% private
