@@ -1,6 +1,6 @@
 -module(webtekcos).
 -export([start_link/0, start_link/2, start_link/3, stop/1, loop/1]).
--export([send_data/1, close/0]).
+-export([send_data/1, send_data/2, close/0]).
 
 start_link() ->
   start_link(?MODULE, "127.0.0.1", 3008).
