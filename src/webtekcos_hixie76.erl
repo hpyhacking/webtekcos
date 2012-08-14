@@ -50,5 +50,4 @@ decode(<<0:8, End/binary>>) ->
   [Data, _] = binary:split(End, <<255>>),
   binary_to_list(Data).
 
-log(Msg) ->
-  io:format("===> ~p~n", [Msg]).
+log(_Msg) -> ok.

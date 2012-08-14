@@ -24,8 +24,7 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-  io:format("sup init~n"),
-    {ok, { {one_for_one, 5, 10}, [
-          {websocket_server, {webtekcos, start_link, []}, 
-            permanent, 2000, worker, []}
-        ]} }.
+  {ok, { {one_for_one, 5, 10}, [
+        {websocket_server, {webtekcos, start_link, []}, 
+          permanent, 2000, worker, []}
+      ]} }.

@@ -10,7 +10,6 @@ start_link(Host, Port) when is_list(Host), is_integer(Port) ->
   
 start_link(Name, Host, Port) when is_list(Host), is_integer(Port) ->
   Options = [{ip, Host}, {loop, fun ?MODULE:loop/1}, {port, Port}, {name, Name}],
-  io:format("start websocket server ...~n"),
   mochiweb_socket_server:start_link(Options).
 
 stop(Name) ->
@@ -125,5 +124,4 @@ loop(Socket) ->
       log(invalid_handshake_request)
   end.
 
-log(Msg) ->
-  io:format("===> ~p~n", [Msg]).
+log(Msg) -> ok.
