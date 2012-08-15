@@ -9,6 +9,7 @@ start_link(Host, Port) when is_list(Host), is_integer(Port) ->
   start_link(?MODULE, Host, Port).
   
 start_link(Name, Host, Port) when is_list(Host), is_integer(Port) ->
+  webtekcos_event:start_link(),
   Options = [{ip, Host}, {loop, fun ?MODULE:loop/1}, {port, Port}, {name, Name}],
   mochiweb_socket_server:start_link(Options).
 
@@ -74,29 +75,35 @@ check_mod(Mod, VersionMod, Socket, LoopData) ->
   end.
 
 loop(VersionMod, Socket, Mod, undef) ->
+  webtekcos_event:connect(),
   LoopData = Mod:connect(),
   loop(VersionMod, Socket, Mod, LoopData);
 
 loop(VersionMod, Socket, Mod, LoopData) ->
   NewLoopData = receive
     close ->
+      webtekcos_event:disconnect(),
       Mod:disconnect(LoopData),
       gen_tcp:close(Socket),
       exit(normal);
     {tcp, Socket, Bin} ->
       case VersionMod:decode(Bin) of
         tcp_closed ->
+          webtekcos_event:disconnect(),
           Mod:disconnect(LoopData),
           gen_tcp:close(Socket),
           exit(normal);
         Data ->
+          webtekcos_event:rcv_data(Data),
           Mod:handle_data(Data, LoopData)
       end;
     {send, Bin} when is_binary(Bin) ->
+      webtekcos_event:send_data(Bin),
       gen_tcp:send(Socket, VersionMod:encode(Bin)), 
       LoopData;
     {tcp_closed, _} ->
       gen_tcp:close(Socket),
+      webtekcos_event:disconnect(),
       Mod:disconnect(LoopData),
       exit(normal);
     Msg ->

@@ -13,7 +13,7 @@ start() ->
   application:start(webtekcos).
 
 start(_StartType, _StartArgs) ->
-    webtekcos_sup:start_link().
+  webtekcos_sup:start_link().
 
 stop(_State) ->
-    ok.
+  ok.
