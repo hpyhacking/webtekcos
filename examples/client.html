@@ -2,7 +2,7 @@
 <html>
   <body>
     <script type="text/javascript" charset="utf-8">
-      ws = new WebSocket("ws://127.0.0.1:8000/webtekcos/sample", "example");
+      ws = new WebSocket("ws://127.0.0.1:3008/webtekcos/sample", "example");
       ws.onmessage = function(e) { console.log("<<<<<< " + e.data); };
       ws.onerror = function(e) { console.log(["ERROR", e]); };
       ws.onclose = function(e) { console.log(["CLOSE", e]); };

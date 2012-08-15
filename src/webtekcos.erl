@@ -9,7 +9,6 @@ start_link(Host, Port) when is_list(Host), is_integer(Port) ->
   start_link(?MODULE, Host, Port).
   
 start_link(Name, Host, Port) when is_list(Host), is_integer(Port) ->
-  webtekcos_event:start_link(),
   Options = [{ip, Host}, {loop, fun ?MODULE:loop/1}, {port, Port}, {name, Name}],
   mochiweb_socket_server:start_link(Options).
 

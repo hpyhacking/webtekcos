@@ -24,7 +24,7 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-  {ok, { {one_for_one, 5, 10}, [
-        {websocket_server, {webtekcos, start_link, []}, 
-          permanent, 2000, worker, []}
-      ]} }.
+  Server = {webtekcos, {webtekcos, start_link, []}, permanent, 2000, worker, [webtekcos_event, webtekcos]},
+  Event = {webtekcos_event, {webtekcos_event, start_link, []}, permanent, 2000, worker, [webtekcos_event]},
+
+  {ok, {{one_for_all, 5, 10}, [Event, Server]}}.
