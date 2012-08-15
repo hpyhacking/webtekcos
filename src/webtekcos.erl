@@ -131,4 +131,4 @@ loop(Socket) ->
       log(invalid_handshake_request)
   end.
 
-log(Msg) -> ok.
+log(_Msg) -> ok.
