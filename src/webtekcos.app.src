@@ -1,11 +1,12 @@
 {application, webtekcos,
  [
   {description, ""},
-  {vsn, "1"},
+  {vsn, "0.1.0"},
   {registered, []},
   {applications, [
                   kernel,
-                  stdlib
+                  stdlib,
+                  sasl
                  ]},
   {mod, { webtekcos_app, []}},
   {env, []}
