@@ -1,4 +1,5 @@
 -module(webtekcos_sample_handler).
+-behaviour(webtekcos).
 -export([connect/0, disconnect/1, handle_data/2, handle_message/2]).
 
 connect() -> 
@@ -22,5 +23,4 @@ handle_data(Data, {counter, Counter}) ->
 
 handle_message({timeout, _, ?MODULE}, LoopData) ->
   webtekcos:send_data(list_to_binary("Hello Timer")),
-  io:format("<<<<< ~p~n", ["Hello Timer"]),
   LoopData.
