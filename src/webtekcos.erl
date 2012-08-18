@@ -52,9 +52,8 @@ handshake(VersionMod, Socket, Headers) ->
   log([handshake_end, VersionMod]),
 
   Path = webtekcos_tools:get_header(Headers, "_PATH_"),
-  Mod = list_to_atom(string:join(string:tokens(Path, "/"), "_")),
-  log([handle_mod, Mod]),
-
+  %% convert query path to end of "handler" mod name
+  Mod = list_to_atom(string:join(string:tokens(Path, "/") ++ ["handler"], "_")),
   check_mod(Mod, VersionMod, Socket, undef).
 
 check_mod(Mod, VersionMod, Socket, LoopData) ->

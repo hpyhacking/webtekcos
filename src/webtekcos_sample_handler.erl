@@ -1,4 +1,4 @@
--module(webtekcos_sample).
+-module(webtekcos_sample_handler).
 -export([connect/0, disconnect/1, handle_data/2, handle_message/2]).
 
 connect() -> 
