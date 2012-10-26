@@ -4,7 +4,9 @@
 -export([behaviour_info/1]).
 
 start_link() ->
-  start_link(?MODULE, "127.0.0.1", 3008).
+  Port = get_env(webtekcos, port, 3008),
+  Host = get_env(webtekcos, host, "127.0.0.1"),
+  start_link(?MODULE, Host, Port).
 
 start_link(Host, Port) when is_list(Host), is_integer(Port) ->
   start_link(?MODULE, Host, Port).
@@ -140,3 +142,9 @@ loop(Socket) ->
   end.
 
 log(_Msg) -> ok.
+
+get_env(AppName, Key, Def) ->
+  case application:get_env(AppName, Key) of
+    undefined -> Def;
+    {ok, Value} -> Value
+  end.
